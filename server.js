@@ -14,7 +14,7 @@ const referenceSchema = new mongoose.Schema({
   citation: { type: String, default: null },
   link: { type: String, default: null },
   alink: { type: String, default: null },
-  refNumber: { type: String, default: null },
+  refNumber: { type: Number, default: null },
   refText: { type: String, default: null },
 });
 
@@ -95,6 +95,7 @@ const addRefDB = async (
    // Split refText based on the delimiter |||||| to process multiple references
    const refTexts = refText.split('||||||');
    let rtn = 0;
+   refNumber = parseInt(refNumber, 10);
 
    refNumber++;
 
@@ -105,7 +106,7 @@ const addRefDB = async (
            citation: citation,
            link: link,
            alink: alink,
-           refNumber: refNumber,   // Use the modified refNumber
+	   refNumber: refNumber,
            refText: text.trim()   // Use the individual text from refTexts array
        };
        
@@ -146,7 +147,7 @@ app.post("/addRefAPI", cors(),
     const citation = req.body.citation;
     const link = req.body.link;
     const alink = req.body.alink;
-    const refNumber = req.body.refNumber;
+	  const refNumber = parseInt(req.body.refNumber, 10);
     const refText = req.body.refText;
 
     console.log(req.body);
