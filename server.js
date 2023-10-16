@@ -6,7 +6,7 @@ import {fileURLToPath} from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const mongoose = require('mongoose');
-mongoose.connect('mongodb://127.0.0.1:27017/peacio');
+mongoose.connect('mongodb://127.0.0.1:27017/refs');
 
 const referenceSchema = new mongoose.Schema({
   dbKey: { type: String, default: null },
@@ -18,7 +18,7 @@ const referenceSchema = new mongoose.Schema({
   refText: { type: String, default: null },
 });
 
-const ReferenceModel = mongoose.model('Reference', referenceSchema);
+const refDBRec = mongoose.model('Reference', referenceSchema);
  
 const fs = require("fs");
 const http = require("http");
@@ -90,7 +90,7 @@ const addRefDB  = async  (
     refNumber,
     refText
  ) => {
-
+console.log("hello");
          let jsonDB= {
 		 dbKey: dbKey,
 		 reference: reference,
@@ -125,7 +125,8 @@ app.get("/ping", cors(),
 
 app.post("/addRefAPI", cors(),
   asyncHandler(async (req, res, next) => {
-    const dbKey = req.body.dbKey;
+   console.log("reached func");
+	  const dbKey = req.body.dbKey;
     const reference = req.body.reference;
     const citation = req.body.citation;
     const link = req.body.link;
