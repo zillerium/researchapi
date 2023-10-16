@@ -81,39 +81,54 @@ const insertRec = async (partRec) => {
 }
 
 
-const addRefDB  = async  (
+const addRefDB = async (
    dbKey,
-    reference,
-    citation,
-    link,
-    alink,
-    refNumber,
-    refText
- ) => {
-console.log("hello");
-         let jsonDB= {
-		 dbKey: dbKey,
-		 reference: reference,
-		 citation: citation,
-		 link: link,
-		 alink: alink,
-		 refNumber: refNumber,
-		 refText: refText
-         };
-         let refRec = new refDBRec (jsonDB);
-         console.log(refRec);
-         let rtn = 0;
-         var found = false; 
-         found = await refDBRec.findOne({'dbKey': dbKey});
-         if (found) 
-           rtn = await updateRec(jsonDB, dbKey);
-         else 
+   reference,
+   citation,
+   link,
+   alink,
+   refNumber,
+   refText
+) => {
+   console.log("hello");
+
+   // Split refText based on the delimiter |||||| to process multiple references
+   const refTexts = refText.split('||||||');
+   let rtn = 0;
+
+   refNumber++;
+
+   for (const text of refTexts) {
+       let jsonDB = {
+           dbKey: `${dbKey}-${refNumber}`,  // Modify dbKey with refNumber so that each reference has a unique dbKey
+           reference: reference,
+           citation: citation,
+           link: link,
+           alink: alink,
+           refNumber: refNumber,   // Use the modified refNumber
+           refText: text.trim()   // Use the individual text from refTexts array
+       };
+       
+       let refRec = new refDBRec(jsonDB);
+       console.log(refRec);
+
+       var found = false; 
+       found = await refDBRec.findOne({'dbKey': jsonDB.dbKey});
+       
+       if (found) {
+           rtn = await updateRec(jsonDB, jsonDB.dbKey);
+       } else {
            rtn = await insertRec(refRec);
+       }
 
-         
-         return rtn;
+       // Increment refNumber for next iteration
+       refNumber++;
+   }
 
+   return rtn;
 }
+
+
  
 
 app.get("/ping", cors(),

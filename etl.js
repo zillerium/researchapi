@@ -9,11 +9,13 @@ const referenceSchema = new mongoose.Schema({
   citation: { type: String, default: null },
   link: { type: String, default: null },
   alink: { type: String, default: null },
-  refNumber: { type: String, default: null },
+  refNumber: { type: Number, default: null },
   refText: { type: String, default: null },
 });
 
 const refDBRec = mongoose.model('Reference', referenceSchema);
+
+const dbRef = 'HumbelDeGov';  // Declare the reference name as a variable at the top
 
 const extractDataToFile = async (referenceName) => {
     const records = await refDBRec.find({reference: referenceName}).sort({refNumber: 1});
@@ -23,15 +25,19 @@ const extractDataToFile = async (referenceName) => {
         return;
     }
 
+    let globalVar = `const REFERENCE_NAME = "${referenceName}";\n\n`;
     const formattedData = records.map(record => {
         return `'[${record.refNumber}]': {\n\t\tdetails: '${record.refText}'\n\t},`;
     }).join('\n');
 
-    fs.writeFileSync('extractdata.txt', formattedData, 'utf8');
-    console.log(`Data extracted to extractdata.txt for reference: ${referenceName}`);
+    const outputData = globalVar + formattedData;
+
+    const fileName = `${referenceName}.txt`;
+    fs.writeFileSync(fileName, outputData, 'utf8');
+    console.log(`Data extracted to ${fileName} for reference: ${referenceName}`);
 };
 
-extractDataToFile('ref1').then(() => {
+extractDataToFile(dbRef).then(() => {  // Use the variable in the function call
     console.log('Extraction complete.');
     mongoose.connection.close();  // Close the database connection
     process.exit(0);  // End the script
