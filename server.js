@@ -129,6 +129,44 @@ const addRefDB = async (
    return rtn;
 }
 
+// ... [Your existing code]
+
+app.get("/getRefData", cors(),
+  asyncHandler(async (req, res, next) => {
+    const referenceParam = req.query.reference;
+
+    if (!referenceParam) {
+      return res.status(400).json({ error: 'Reference parameter is required.' });
+    }
+
+    try {
+      const records = await refDBRec.find({ reference: referenceParam });
+
+      if (records.length === 0) {
+        return res.status(404).json({ error: 'No records found for the given reference.' });
+      }
+
+      const jsonResponse = {
+        reference: records[0].reference,
+        citation: records[0].citation,
+        link: records[0].link,
+        alink: records[0].alink,
+        refs: records.map(record => ({
+          refNumber: record.refNumber,
+          refText: record.refText
+        }))
+      };
+
+      res.json(jsonResponse);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'An error occurred while fetching the data.' });
+    }
+  })
+);
+
+// ... [Your existing code]
+
 
  
 
