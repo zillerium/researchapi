@@ -8,12 +8,21 @@ const __dirname = path.dirname(__filename);
 const mongoose = require('mongoose');
 mongoose.connect('mongodb://127.0.0.1:27017/refs');
 
-const referenceSchema = new mongoose.Schema({
-  dbKey: { type: String, default: null },
+const keyReferenceSchema = new mongoose.Schema({
+  dbKey: { type: String, unique: true, required: true },
   reference: { type: String, default: null },
   citation: { type: String, default: null },
   link: { type: String, default: null },
   alink: { type: String, default: null },
+});
+
+// Model for key data
+const KeyRefDBRec = mongoose.model('KeyReference', keyReferenceSchema, 'references'); // references is the collection name
+
+
+const referenceSchema = new mongoose.Schema({
+  dbKey: { type: String, default: null },
+  reference: { type: String, default: null },
   refNumber: { type: Number, default: null },
   refText: { type: String, default: null },
 });
@@ -129,34 +138,92 @@ const addRefDB = async (
    return rtn;
 }
 
+const insertKeyData = async (dbKey, reference, citation, link, alink) => {
+    // Check for duplicate
+    const existingKeyData = await KeyRefDBRec.findOne({ dbKey: dbKey });
+    if (existingKeyData) {
+        console.log(`Key already exists: ${dbKey}. Skipping insertion.`);
+        return; // Skip insertion if the key already exists
+    }
+
+    // Create a new key record and save it
+    const keyRecord = new KeyRefDBRec({
+        dbKey: dbKey,
+        reference: reference,
+        citation: citation,
+        link: link,
+        alink: alink
+    });
+    
+    await keyRecord.save();
+}
+
+app.get("/getAllReferences", cors(),
+  asyncHandler(async (req, res, next) => {
+    const references = await getUniqueReferences();
+    res.json(references);
+  })
+);
+
+const getUniqueReferences = async () => {
+  const uniqueReferences = await KeyRefDBRec.distinct('reference');
+
+  let result = [];
+  for (const reference of uniqueReferences) {
+    // Skip records with reference ending in "Key"
+    if (reference.endsWith('Key')) continue;
+
+    const sampleRecord = await KeyRefDBRec.findOne({ reference: reference });
+    result.push({
+      reference: sampleRecord.reference,
+      citation: sampleRecord.citation,
+      link: sampleRecord.link,
+      alink: sampleRecord.alink
+    });
+  }
+
+  return result.sort((a, b) => a.reference.localeCompare(b.reference));
+}
+
+
 // ... [Your existing code]
 
 app.get("/getRefData", cors(),
   asyncHandler(async (req, res, next) => {
+    const keyreferenceParam = req.query.reference + "Key";
     const referenceParam = req.query.reference;
 
-    if (!referenceParam) {
+    if ((!referenceParam) || (!keyreferenceParam)) {
       return res.status(400).json({ error: 'Reference parameter is required.' });
+    } else {
+        console.log(" params are invalid ");
     }
 
     try {
-      const records = await refDBRec.find({ reference: referenceParam });
+      const records = await KeyRefDBRec.find({ reference: keyreferenceParam });
 
       if (records.length === 0) {
-        return res.status(404).json({ error: 'No records found for the given reference.' });
-      }
+        return res.status(404).json({ error: 'No records found for the given key reference.' });
+      } else {
+        console.log("data record data found ");
+    }
 
-      const jsonResponse = {
+      const datarecords = await refDBRec.find({ reference: referenceParam });
+      
+      if (datarecords.length === 0) {
+        return res.status(404).json({ error: 'No records found for the given data reference.' });
+      }
+	    const jsonResponse = {
         reference: records[0].reference,
         citation: records[0].citation,
         link: records[0].link,
         alink: records[0].alink,
-        refs: records.map(record => ({
+        refs:datarecords.map(record => ({
           refNumber: record.refNumber,
           refText: record.refText
         }))
       };
-
+      console.log("json reference -", jsonResponse);
       res.json(jsonResponse);
     } catch (error) {
       console.error(error);
@@ -189,6 +256,10 @@ app.post("/addRefAPI", cors(),
     const refText = req.body.refText;
 
     console.log(req.body);
+
+    const keyDbKey = dbKey + "Key";
+    await insertKeyData(keyDbKey, reference + "Key", citation, link, alink);
+
 
     const rtn = await addRefDB (
       dbKey,
