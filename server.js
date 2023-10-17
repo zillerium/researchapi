@@ -194,9 +194,8 @@ app.get("/getRefData", cors(),
     const referenceParam = req.query.reference;
 
     if ((!referenceParam) || (!keyreferenceParam)) {
+      console.log(" params are invalid ");
       return res.status(400).json({ error: 'Reference parameter is required.' });
-    } else {
-        console.log(" params are invalid ");
     }
 
     try {
@@ -206,23 +205,26 @@ app.get("/getRefData", cors(),
         return res.status(404).json({ error: 'No records found for the given key reference.' });
       } else {
         console.log("data record data found ");
-    }
+      }
 
-      const datarecords = await refDBRec.find({ reference: referenceParam });
+      // Fetching and sorting data records by refNumber
+      const datarecords = await refDBRec.find({ reference: referenceParam }).sort({ refNumber: 1 });
       
       if (datarecords.length === 0) {
         return res.status(404).json({ error: 'No records found for the given data reference.' });
       }
-	    const jsonResponse = {
+
+      const jsonResponse = {
         reference: records[0].reference,
         citation: records[0].citation,
         link: records[0].link,
         alink: records[0].alink,
-        refs:datarecords.map(record => ({
+        refs: datarecords.map(record => ({
           refNumber: record.refNumber,
           refText: record.refText
         }))
       };
+      
       console.log("json reference -", jsonResponse);
       res.json(jsonResponse);
     } catch (error) {
