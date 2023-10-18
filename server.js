@@ -16,6 +16,20 @@ const keyReferenceSchema = new mongoose.Schema({
   alink: { type: String, default: null },
 });
 
+const wordCountSchema = new mongoose.Schema({
+  reference: { type: String, required: true },
+  wordObj: [
+    {
+      word: { type: String, required: true },
+      frequency: { type: Number, required: true },
+    }
+  ]
+});
+
+// Model for word count data
+const WordCountDBRec = mongoose.model('WordCount', wordCountSchema, 'wordcounts');
+
+
 // Model for key data
 const KeyRefDBRec = mongoose.model('KeyReference', keyReferenceSchema, 'references'); // references is the collection name
 
@@ -88,6 +102,32 @@ const insertRec = async (partRec) => {
 
  return rtn;
 }
+
+app.get("/getWordCounts", cors(),
+  asyncHandler(async (req, res, next) => {
+    const referenceParam = req.query.reference;
+
+    if (!referenceParam) {
+      return res.status(400).json({ error: 'Reference parameter is required.' });
+    }
+
+    try {
+      const record = await WordCountDBRec.findOne({ reference: referenceParam });
+
+      if (!record) {
+        return res.status(404).json({ error: 'No records found for the given reference.' });
+      }
+
+      // Sort wordObj array by frequency
+      const sortedWordObj = record.wordObj.sort((a, b) => b.frequency - a.frequency);
+
+      res.json(sortedWordObj);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'An error occurred while fetching the word counts.' });
+    }
+  })
+);
 
 
 const addRefDB = async (
@@ -165,6 +205,13 @@ app.get("/getAllReferences", cors(),
   })
 );
 
+app.get("/getAllWordReferences", cors(),
+  asyncHandler(async (req, res, next) => {
+    const references = await getUniqueWordReferences();
+	  console.log("references--", references);
+    res.json(references);
+  })
+);
 const getUniqueReferences = async () => {
   const uniqueReferences = await KeyRefDBRec.distinct('reference');
 
@@ -185,6 +232,16 @@ const getUniqueReferences = async () => {
   return result.sort((a, b) => a.reference.localeCompare(b.reference));
 }
 
+const getUniqueWordReferences = async () => {
+    // Assuming we have a Mongoose model for wordcounts
+    const WordCounts = mongoose.model('WordCount');
+
+    const uniqueReferences = await WordCounts.distinct('reference');
+
+    // As the references from wordcounts do not have associated citation, link, or alink,
+    // we can directly return the sorted unique references.
+    return uniqueReferences.sort((a, b) => a.localeCompare(b));
+}
 
 // ... [Your existing code]
 
