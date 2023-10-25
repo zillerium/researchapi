@@ -232,6 +232,105 @@ const getUniqueReferences = async () => {
   return result.sort((a, b) => a.reference.localeCompare(b.reference));
 }
 
+app.get("/getSentences", cors(), asyncHandler(async (req, res, next) => {
+    const referenceParam = req.query.reference;
+
+const allSentences = [
+    {
+        header: "Financial Risks",
+        sentences: [
+            { sentence: "In DeFi, TradFi financial intermediaries are substituted with blockchain technology [1]" }
+            //... (additional sentences here if needed)
+        ]
+    }
+    //... (additional sections here if needed)
+];
+
+    if (!referenceParam) {
+        return res.status(400).json({ error: 'Reference parameter is required.' });
+    }
+
+    try {
+        res.json(allSentences);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred while fetching the sentences.' });
+    }
+}));
+
+app.get("/getDictionary", cors(), asyncHandler(async (req, res, next) => {
+
+    const referenceParam = req.query.reference;
+    if (!referenceParam) {
+        return res.status(400).json({ error: 'Reference parameter is required.' });
+    }
+
+    try {
+        // Fetch key reference from MongoDB
+        const keyReference = await KeyRefDBRec.findOne({ reference: referenceParam + "Key" });
+
+        // Fetch list of references associated with the given reference parameter
+        const referenceList = await refDBRec.find({ reference: referenceParam }).sort({ refNumber: 1 });
+
+        // Build the refs array from the fetched data
+        const refsArray = referenceList.map(record => {
+            return {
+                ref: `[${record.refNumber}]`,
+                text: record.refText
+            };
+        });
+
+        // Construct the dictionary object
+        const dictionary = {
+            reference: keyReference.citation,
+            link: keyReference.link,
+            alink: keyReference.alink,
+            refs: refsArray
+        };
+
+        // Return the constructed dictionary
+        res.json(dictionary);
+
+    } catch (error) {
+        return res.status(500).json({ error: 'Error fetching data.' });
+    }
+
+}));
+
+
+
+app.get("/getDictionary1", cors(), asyncHandler(async (req, res, next) => {
+    const referenceParam = req.query.reference;
+
+const dictionary = {
+    reference: 'Humbel, Claude. Decentralized Finance: A new frontier of global financial markets regulation. GesKR: Schweizerische Zeitschrift für Gesellschafts-und Kapitalmarktrecht sowie Umstrukturierungen 1 (2022): 9-25.',
+    link: 'https://ipfs.io/ipfs/QmaziaN5rA5mA26fjQK3Mr2cTgXH6BKjsskpuy5iDQvNYa',
+    alink: 'https://www.zora.uzh.ch/id/eprint/218603/1/Humbel_GesKR_1_2022.pdf',
+    refs: [
+        {
+            ref: '[1]',
+            text: 'Whereas DeFi is still in its infancy, a central tenet is its determination to solve the problems of traditional finance by substituting traditional financial intermediaries with blockchain technology.'
+        }
+        //... (additional references here if needed)
+    ]
+};
+
+
+    if (!referenceParam) {
+        return res.status(400).json({ error: 'Reference parameter is required.' });
+    }
+
+    try {
+        res.json(dictionary);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred while fetching the dictionary.' });
+    }
+}));
+
+
+
+
 const getUniqueWordReferences = async () => {
     // Assuming we have a Mongoose model for wordcounts
     const WordCounts = mongoose.model('WordCount');
