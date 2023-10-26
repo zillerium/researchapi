@@ -29,6 +29,15 @@ const wordCountSchema = new mongoose.Schema({
 // Model for word count data
 const WordCountDBRec = mongoose.model('WordCount', wordCountSchema, 'wordcounts');
 
+const sentenceSchema = new mongoose.Schema({
+  reference: { type: String, required: true },
+  header: { type: String, required: true },
+  headerSeq: { type: Number, required: true },
+  sentences: [{ sentence: { type: String, required: true } }]
+});
+
+const Sentence = mongoose.model('Sentence', sentenceSchema);
+
 
 // Model for key data
 const KeyRefDBRec = mongoose.model('KeyReference', keyReferenceSchema, 'references'); // references is the collection name
@@ -233,6 +242,26 @@ const getUniqueReferences = async () => {
 }
 
 app.get("/getSentences", cors(), asyncHandler(async (req, res, next) => {
+  const referenceParam = req.query.reference;
+
+  if (!referenceParam) {
+    return res.status(400).json({ error: 'Reference parameter is required.' });
+  }
+
+  try {
+    const allSentences = await Sentence.find({ reference: referenceParam }).sort({headerSeq: 1 });
+    if (!allSentences.length) {
+      return res.status(404).json({ error: 'No sentences found for the given reference.' });
+    }
+    res.json(allSentences);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'An error occurred while fetching the sentences.' });
+  }
+}));
+
+
+app.get("/getSentences1", cors(), asyncHandler(async (req, res, next) => {
     const referenceParam = req.query.reference;
 
 const allSentences = [
@@ -392,6 +421,80 @@ app.get("/getRefData", cors(),
 
 // ... [Your existing code]
 
+
+const insertSentenceRec = async (sentenceRecord) => {
+  try {
+    await sentenceRecord.save();
+    return 1;  // Success
+  } catch (err) {
+    console.error("Error inserting record:", err);
+    return 0;  // Failure
+  }
+};
+
+// Function to update record in MongoDB
+const updateSentenceRec = async (jsonDB, dbKey) => {
+  try {
+    await Sentence.updateOne({ dbKey: dbKey }, jsonDB);
+    return 1;  // Success
+  } catch (err) {
+    console.error("Error updating record:", err);
+    return 0;  // Failure
+  }
+};
+
+const addSentenceDB = async (
+  reference,
+  header,
+  headerSeq,
+  sentencesString
+) => {
+  // Split sentencesString based on the delimiter |||||| to process multiple sentences
+  const individualSentences = sentencesString.split('||||||').map(sentence => ({ sentence: sentence.trim() }));
+  let dbKey = `${reference}-${headerSeq}`;  // Construct dbKey using reference and headerSeq
+  
+  let jsonDB = {
+    dbKey: dbKey,
+    reference: reference,
+    header: header,
+    headerSeq: headerSeq,
+    sentences: individualSentences
+  };
+
+  let sentenceRecord = new Sentence(jsonDB);
+
+  let found = await Sentence.findOne({ 'dbKey': dbKey });
+
+  let rtn;
+  if (found) {
+    rtn = await updateSentenceRec(jsonDB, dbKey);
+  } else {
+    rtn = await insertSentenceRec(sentenceRecord);
+  }
+
+  return rtn;
+}
+
+// Sample API Endpoint
+app.post("/addSentence", cors(), asyncHandler(async (req, res) => {
+  const { reference, header, headerSeq, sentences } = req.body;
+
+  if (!reference || !header || !headerSeq || !sentences) {
+    return res.status(400).json({ error: 'Missing required fields.' });
+  }
+
+  try {
+    const result = await addSentenceDB(reference, header, headerSeq, sentences);
+    if (result === 1) {
+      res.status(200).json({ message: 'Successfully added/updated the sentence data.' });
+    } else {
+      res.status(500).json({ error: 'Failed to add/update the sentence data.' });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'An error occurred while processing the request.' });
+  }
+}));
 
  
 
