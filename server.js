@@ -463,14 +463,19 @@ const addSentenceDB = async (
 
   let sentenceRecord = new Sentence(jsonDB);
 
-  let found = await Sentence.findOne({ 'dbKey': dbKey });
+let found = await Sentence.findOne({ 
+    'reference': jsonDB.reference,
+    'header': jsonDB.header,
+    'headerSeq': jsonDB.headerSeq 
+});
 
-  let rtn;
-  if (found) {
+let rtn;
+if (found) {
     rtn = await updateSentenceRec(jsonDB, dbKey);
-  } else {
+} else {
     rtn = await insertSentenceRec(sentenceRecord);
-  }
+}
+
 
   return rtn;
 }
