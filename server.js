@@ -443,63 +443,52 @@ const updateSentenceRec = async (jsonDB, dbKey) => {
   }
 };
 
-const addSentenceDB = async (
-  reference,
-  header,
-  headerSeq,
-  sentencesString
-) => {
-  // Split sentencesString based on the delimiter |||||| to process multiple sentences
-  const individualSentences = sentencesString.split('||||||').map(sentence => ({ sentence: sentence.trim() }));
-  let dbKey = `${reference}-${headerSeq}`;  // Construct dbKey using reference and headerSeq
-  
-  let jsonDB = {
-    dbKey: dbKey,
-    reference: reference,
-    header: header,
-    headerSeq: headerSeq,
-    sentences: individualSentences
-  };
+const addSentenceDB = async (reference, header, sentencesString) => {
+    // Find the latest headerSeq for the provided reference and header
+    const latestRecord = await Sentence.findOne({
+        'reference': reference,
+        'header': header
+    }).sort({ 'headerSeq': -1 });
 
-  let sentenceRecord = new Sentence(jsonDB);
+    // Set the headerSeq for the new record. If no records exist, start at 1. Otherwise, increment the latest headerSeq by 1.
+    const headerSeq = latestRecord ? latestRecord.headerSeq + 1 : 1;
 
-let found = await Sentence.findOne({ 
-    'reference': jsonDB.reference,
-    'header': jsonDB.header,
-    'headerSeq': jsonDB.headerSeq 
-});
+    const individualSentences = sentencesString.split('||||||').map(sentence => ({ sentence: sentence.trim() }));
+    const dbKey = `${reference}-${headerSeq}`; 
 
-let rtn;
-if (found) {
-    rtn = await updateSentenceRec(jsonDB, dbKey);
-} else {
-    rtn = await insertSentenceRec(sentenceRecord);
+    const jsonDB = {
+        dbKey: dbKey,
+        reference: reference,
+        header: header,
+        headerSeq: headerSeq,
+        sentences: individualSentences
+    };
+
+    const sentenceRecord = new Sentence(jsonDB);
+    let rtn = await insertSentenceRec(sentenceRecord);
+    return rtn;
 }
 
-
-  return rtn;
-}
-
-// Sample API Endpoint
 app.post("/addSentence", cors(), asyncHandler(async (req, res) => {
-  const { reference, header, headerSeq, sentences } = req.body;
+    const { reference, header, sentences } = req.body;
 
-  if (!reference || !header || !headerSeq || !sentences) {
-    return res.status(400).json({ error: 'Missing required fields.' });
-  }
-
-  try {
-    const result = await addSentenceDB(reference, header, headerSeq, sentences);
-    if (result === 1) {
-      res.status(200).json({ message: 'Successfully added/updated the sentence data.' });
-    } else {
-      res.status(500).json({ error: 'Failed to add/update the sentence data.' });
+    if (!reference || !header || !sentences) {
+        return res.status(400).json({ error: 'Missing required fields.' });
     }
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'An error occurred while processing the request.' });
-  }
+
+    try {
+        const result = await addSentenceDB(reference, header, sentences);
+        if (result === 1) {
+            res.status(200).json({ message: 'Successfully added the sentence data.' });
+        } else {
+            res.status(500).json({ error: 'Failed to add the sentence data.' });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred while processing the request.' });
+    }
 }));
+// Sample API Endpoint
 
  
 
