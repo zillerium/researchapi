@@ -423,7 +423,8 @@ app.get("/getRefData", cors(),
 
 
 const insertSentenceRec = async (sentenceRecord) => {
-  try {
+  console.log("debug sentence == ", sentenceRecord)
+try {
     await sentenceRecord.save();
     return 1;  // Success
   } catch (err) {
@@ -453,8 +454,15 @@ const addSentenceDB = async (reference, header, sentencesString) => {
     // Set the headerSeq for the new record. If no records exist, start at 1. Otherwise, increment the latest headerSeq by 1.
     const headerSeq = latestRecord ? latestRecord.headerSeq + 1 : 1;
 
-    const individualSentences = sentencesString.split('||||||').map(sentence => ({ sentence: sentence.trim() }));
-    const dbKey = `${reference}-${headerSeq}`; 
+    const individualSentences1 = sentencesString.split('||||||').map(sentence => ({ sentence: sentence.trim() }));
+    
+const individualSentences = sentencesString.split('||||||')
+    .map(sentence => sentence.trim()) 
+    .filter(sentence => sentence !== '')  // This line filters out empty strings
+    .map(sentence => ({ sentence: sentence }));
+
+console.log("sentences ===== ", individualSentences);
+	const dbKey = `${reference}-${headerSeq}`; 
 
     const jsonDB = {
         dbKey: dbKey,
@@ -507,7 +515,7 @@ app.post("/addRefAPI", cors(),
     const citation = req.body.citation;
     const link = req.body.link;
     const alink = req.body.alink;
-	  const refNumber = parseInt(req.body.refNumber, 10);
+//	  const refNumber = parseInt(req.body.refNumber, 10);
     const refText = req.body.refText;
 
     console.log(req.body);
@@ -515,6 +523,12 @@ app.post("/addRefAPI", cors(),
     const keyDbKey = dbKey + "Key";
     await insertKeyData(keyDbKey, reference + "Key", citation, link, alink);
 
+const latestRefRecord = await refDBRec.findOne({
+        'reference': reference
+    }).sort({ 'refNumber': -1 });
+
+    // Set the refNumber for the new record. If no records exist, start at 1. Otherwise, increment the latest refNumber by 1.
+    const refNumber = latestRefRecord ? latestRefRecord.refNumber + 1 : 1;
 
     const rtn = await addRefDB (
       dbKey,
