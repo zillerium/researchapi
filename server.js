@@ -151,7 +151,9 @@ const addRefDB = async (
    console.log("hello");
 
    // Split refText based on the delimiter |||||| to process multiple references
-   const refTexts = refText.split('||||||');
+   let refTexts = refText.split('||||||');
+	  refTexts = refTexts.filter(text => text.trim() !== '');
+
    let rtn = 0;
    refNumber = parseInt(refNumber, 10);
 
